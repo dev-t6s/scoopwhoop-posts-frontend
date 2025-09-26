@@ -38,21 +38,6 @@ export default function CacheValidation() {
 
   const handleInvalidateCache = async () => {
     if (invalidations.length > 0) {
-      const previousInvalidationTime = invalidations[0].created_at;
-
-      // Parse the previous invalidation time
-      const [datePart, timePart, period] = previousInvalidationTime.split(" ");
-      const [day, month, year] = datePart.split("-").map(Number);
-      const [hours, minutes, seconds] = timePart.split(":").map(Number);
-
-      // Convert 12-hour format to 24-hour format
-      let hours24 = hours;
-      if (period === "PM" && hours !== 12) {
-        hours24 += 12;
-      } else if (period === "AM" && hours === 12) {
-        hours24 = 0;
-      }
-
       setInvalidating(true);
       try {
         const response = await fetch(
