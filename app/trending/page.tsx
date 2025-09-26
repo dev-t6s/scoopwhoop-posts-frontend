@@ -134,17 +134,17 @@ export default function TrendingPage() {
       trendId,
       steps: [
         {
-          id: 'content-creation',
-          title: 'Creating task',
-          status: 'running'
+          id: "content-creation",
+          title: "Creating task",
+          status: "running",
         },
         {
-          id: 'image-generation',
-          title: 'Generating content and image',
-          status: 'pending'
-        }
+          id: "image-generation",
+          title: "Generating content and image",
+          status: "pending",
+        },
       ],
-      error: null
+      error: null,
     });
 
     let taskId: string;
@@ -152,62 +152,80 @@ export default function TrendingPage() {
 
     try {
       // Step 1: Create content
-      const createResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/content/create`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          headline: topicTitle
-        })
-      });
+      const createResponse = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/content/create`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            headline: topicTitle,
+          }),
+        }
+      );
 
       if (!createResponse.ok) {
-        toast.error(`Oops! Something went wrong while creating the draft: ${createResponse.status}`, {
-          duration: 4000,
-          position: 'top-center',
-        });
-        setModalState(prev => ({ ...prev, isOpen: false }));
+        toast.error(
+          `Oops! Something went wrong while creating the draft: ${createResponse.status}`,
+          {
+            duration: 4000,
+            position: "top-center",
+          }
+        );
+        setModalState((prev) => ({ ...prev, isOpen: false }));
         return;
       }
 
       const createData = await createResponse.json();
       taskId = createData.task_id;
-      
-      setModalState(prev => ({
+
+      setModalState((prev) => ({
         ...prev,
-        steps: prev.steps.map(step => 
-          step.id === 'content-creation' 
-            ? {...step, status: 'completed', details: 'Content created successfully'} 
+        steps: prev.steps.map((step) =>
+          step.id === "content-creation"
+            ? {
+                ...step,
+                status: "completed",
+                details: "Content created successfully",
+              }
             : step
-        )
+        ),
       }));
 
       // Step 2: Poll for status
-      setModalState(prev => ({
+      setModalState((prev) => ({
         ...prev,
-        steps: prev.steps.map(step => 
-          step.id === 'image-generation' ? {...step, status: 'running'} : step
-        )
+        steps: prev.steps.map((step) =>
+          step.id === "image-generation" ? { ...step, status: "running" } : step
+        ),
       }));
 
-      const pollStatus = async (): Promise<{status: string, content?: string}> => {
-        const statusResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/content/status/${taskId}`);
+      const pollStatus = async (): Promise<{
+        status: string;
+        content?: string;
+      }> => {
+        const statusResponse = await fetch(
+          `${process.env.NEXT_PUBLIC_API_URL}/content/status/${taskId}`
+        );
         if (!statusResponse.ok) {
-          toast.error(`Oops! Something went wrong while creating the draft: ${statusResponse.status}`, {
-            duration: 4000,
-            position: 'top-center',
-          });
-          setModalState(prev => ({ ...prev, isOpen: false }));
-          return { status: 'failed' };
+          toast.error(
+            `Oops! Something went wrong while creating the draft: ${statusResponse.status}`,
+            {
+              duration: 4000,
+              position: "top-center",
+            }
+          );
+          setModalState((prev) => ({ ...prev, isOpen: false }));
+          return { status: "failed" };
         }
         return await statusResponse.json();
       };
 
-      let currentStatus = 'running';
-      content = '';
-      while (currentStatus === 'running') {
-        await new Promise(resolve => setTimeout(resolve, 2000));
+      let currentStatus = "running";
+      content = "";
+      while (currentStatus === "running") {
+        await new Promise((resolve) => setTimeout(resolve, 2000));
         const statusData = await pollStatus();
         currentStatus = statusData.status;
         if (statusData.content) {
@@ -215,59 +233,67 @@ export default function TrendingPage() {
         }
       }
 
-      if (currentStatus === 'failed') {
-        toast.error('Oops! Something went wrong while creating the draft', {
+      if (currentStatus === "failed") {
+        toast.error("Oops! Something went wrong while creating the draft", {
           duration: 4000,
-          position: 'top-center',
+          position: "top-center",
         });
-        setModalState(prev => ({ ...prev, isOpen: false }));
+        setModalState((prev) => ({ ...prev, isOpen: false }));
         return;
       }
 
       // Complete the content generation step
-      setModalState(prev => ({
+      setModalState((prev) => ({
         ...prev,
-        steps: prev.steps.map(step => 
-          step.id === 'image-generation' 
-            ? {...step, status: 'completed', details: 'Content and Images generated successfully'} 
+        steps: prev.steps.map((step) =>
+          step.id === "image-generation"
+            ? {
+                ...step,
+                status: "completed",
+                details: "Content and Images generated successfully",
+              }
             : step
-        )
+        ),
       }));
-
     } catch (err) {
-      console.error('Error in create process:', err);
-      const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
-      
+      console.error("Error in create process:", err);
+      const errorMessage =
+        err instanceof Error ? err.message : "Unknown error occurred";
+
       toast.error(errorMessage, {
         duration: 4000,
-        position: 'top-center',
+        position: "top-center",
       });
 
-      setModalState(prev => ({ ...prev, isOpen: false }));
+      setModalState((prev) => ({ ...prev, isOpen: false }));
       return; // Exit early if content creation failed
     }
 
     // Fetch images outside the main try-catch block
     let imageWithTextUrl = null;
     try {
-      const imageWithTextResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/content/image/${taskId}`);
+      const imageWithTextResponse = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/content/image/${taskId}`
+      );
       if (imageWithTextResponse.ok) {
         const imageWithTextBlob = await imageWithTextResponse.blob();
         imageWithTextUrl = URL.createObjectURL(imageWithTextBlob);
       }
     } catch (err) {
-      console.warn('Failed to fetch image with text:', err);
+      console.warn("Failed to fetch image with text:", err);
     }
 
     let imageWithoutTextUrl = null;
     try {
-      const imageWithoutTextResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/content/image/${taskId}?type=image_without_text`);
+      const imageWithoutTextResponse = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/content/image/${taskId}?type=image_without_text`
+      );
       if (imageWithoutTextResponse.ok) {
         const imageWithoutTextBlob = await imageWithoutTextResponse.blob();
         imageWithoutTextUrl = URL.createObjectURL(imageWithoutTextBlob);
       }
     } catch (err) {
-      console.warn('Failed to fetch image without text:', err);
+      console.warn("Failed to fetch image without text:", err);
     }
 
     setSelectedTask({
@@ -276,12 +302,12 @@ export default function TrendingPage() {
       content,
       imageWithTextUrl,
       imageWithoutTextUrl,
-      selectedImageType: 'with_text'
+      selectedImageType: "with_text",
     });
 
-    setModalState(prev => ({
+    setModalState((prev) => ({
       ...prev,
-      isOpen: false
+      isOpen: false,
     }));
   };
 
@@ -374,7 +400,7 @@ export default function TrendingPage() {
     };
   };
 
-  const DateCell = ({ search }: { search: { trend_start_time: string; } }) => {
+  const DateCell = ({ search }: { search: { trend_start_time: string } }) => {
     const dateInfo = formatDate(search.trend_start_time);
 
     return (
@@ -402,12 +428,12 @@ export default function TrendingPage() {
                   {/* Calendar Component */}
                   <div className="flex flex-col space-y-3 relative">
                     <div className="relative">
-                      <Calendar                   
-                        mode="single"                   
+                      <Calendar
+                        mode="single"
                         selected={dateInfo.fullDate}
-                        month={dateInfo.fullDate}                   
-                        className="rounded-md border shadow-sm text-black"                   
-                        captionLayout="dropdown"                 
+                        month={dateInfo.fullDate}
+                        className="rounded-md border shadow-sm text-black"
+                        captionLayout="dropdown"
                       />
                       <div className="absolute inset-0 bg-transparent z-10 cursor-not-allowed" />
                     </div>
@@ -627,18 +653,20 @@ export default function TrendingPage() {
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className={`relative w-full h-64 rounded-lg overflow-hidden border-2 ${
-                    selectedTask.selectedImageType === 'with_text' 
-                      ? 'border-blue-500' 
-                      : 'border-transparent'
-                  }`}>
+                  <div
+                    className={`relative w-full h-64 rounded-lg overflow-hidden border-2 ${
+                      selectedTask.selectedImageType === "with_text"
+                        ? "border-blue-500"
+                        : "border-transparent"
+                    }`}
+                  >
                     {selectedTask.imageWithTextUrl ? (
                       <Image
                         src={selectedTask.imageWithTextUrl}
                         alt="Image with text"
                         fill
                         className="object-contain cursor-pointer"
-                        onClick={() => handleImageSelect('with_text')}
+                        onClick={() => handleImageSelect("with_text")}
                       />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center bg-gray-100 text-gray-500">
@@ -646,18 +674,20 @@ export default function TrendingPage() {
                       </div>
                     )}
                   </div>
-                  <div className={`relative w-full h-64 rounded-lg overflow-hidden border-2 ${
-                    selectedTask.selectedImageType === 'without_text' 
-                      ? 'border-blue-500' 
-                      : 'border-transparent'
-                  }`}>
+                  <div
+                    className={`relative w-full h-64 rounded-lg overflow-hidden border-2 ${
+                      selectedTask.selectedImageType === "without_text"
+                        ? "border-blue-500"
+                        : "border-transparent"
+                    }`}
+                  >
                     {selectedTask.imageWithoutTextUrl ? (
                       <Image
                         src={selectedTask.imageWithoutTextUrl}
                         alt="Image without text"
                         fill
                         className="object-contain cursor-pointer"
-                        onClick={() => handleImageSelect('without_text')}
+                        onClick={() => handleImageSelect("without_text")}
                       />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center bg-gray-100 text-gray-500">
@@ -813,7 +843,7 @@ export default function TrendingPage() {
                                   style={{
                                     color: colors[colorIndex].color,
                                     backgroundColor: colors[colorIndex].bg,
-                                    minWidth: "max-content"
+                                    minWidth: "max-content",
                                   }}
                                   scale={0.8}
                                   paddingLeft="10px"
@@ -891,7 +921,19 @@ export default function TrendingPage() {
                     <td className="px-6 py-4">
                       <div className="flex flex-wrap gap-2">
                         {search.category.map((cat, index) => (
-                          <Badge key={index} style={{ color:'#7820bc', backgroundColor:'#f9f1fe'}} scale={0.8} paddingLeft="10px" paddingRight="10px" padding="6px">{cat}</Badge>
+                          <Badge
+                            key={index}
+                            style={{
+                              color: "#7820bc",
+                              backgroundColor: "#f9f1fe",
+                            }}
+                            scale={0.8}
+                            paddingLeft="10px"
+                            paddingRight="10px"
+                            padding="6px"
+                          >
+                            {cat}
+                          </Badge>
                         ))}
                       </div>
                     </td>
